@@ -87,7 +87,7 @@ struct _GstMusicXml2MidiClass
 
 struct _Track
 {
-  char *xml_id;
+  xmlChar *xml_id;
   int track_id;
   int midi_channel;
   int midi_instrument;

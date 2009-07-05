@@ -106,7 +106,9 @@ static void gst_musicxml2midi_get_property (GObject * object, guint prop_id,
 static gboolean gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps);
 static GstFlowReturn gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf);
 static gboolean gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event);
+static Track *get_track_by_part (GstMusicXml2Midi * filter, xmlChar * part_id);
 static void process_element(GstMusicXml2Midi * filter, xmlNode * node);
+static void process_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_note(GstMusicXml2Midi * filter, xmlNode * node);
 
@@ -223,9 +225,8 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
 
   for (cur_node = node; cur_node; cur_node = cur_node->next) {
     if (cur_node->type == XML_ELEMENT_NODE) {
-      process_note(filter, cur_node);
-      if (xmlStrEqual(cur_node->name, (xmlChar *) "note")) {
-        process_note(filter, cur_node);
+      if (xmlStrEqual(cur_node->name, (xmlChar *) "part")) {
+        process_part(filter, cur_node);
       } else if (xmlStrEqual(cur_node->name, (xmlChar *) "score-part")) {
         process_score_part(filter, cur_node);
       } else {
@@ -237,25 +238,63 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static void
+process_part(GstMusicXml2Midi * filter, xmlNode * node)
+{
+  xmlNode *child_node = node->children;
+  xmlNode *measure_node;
+  xmlChar *part_id = xmlGetProp(node, (xmlChar *) "id");
+  Track *t = get_track_by_part(filter, part_id);
+  if (t == NULL) {
+    GST_WARNING("No score-part associated with this part. This part will not be heard.");
+    return;
+  }
+
+  printf("Track: %d\n", t->track_id);
+
+  while (child_node != NULL) {
+    if (xmlStrEqual(child_node->name, (xmlChar *) "measure")) {
+        measure_node = child_node->children;
+        while (measure_node != NULL) {
+          if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
+            process_note(filter, measure_node);
+          }
+          measure_node = measure_node->next;
+        }
+    }
+    child_node = child_node->next;
+  }
+}
+
+
+static Track*
+get_track_by_part(GstMusicXml2Midi * filter, xmlChar * part_id) {
+  Track *t = filter->first_track;
+  while(t != NULL && !xmlStrEqual(t->xml_id, part_id)) {
+    t = t->next;
+  }
+  return t;
+}
+
+static void
 process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
 {
-  Track t;
+  Track *t = malloc(sizeof(Track));
   Track *n = filter->first_track;
   xmlNode *child_node = node->children;
   xmlNode *midi_child;
-  t.track_id = filter->num_tracks;
+  t->track_id = filter->num_tracks;
   filter->num_tracks++;
-  t.xml_id = (char *) xmlGetProp(node, (xmlChar *) "id");
-  t.next = NULL;
+  t->xml_id = xmlGetProp(node, (xmlChar *) "id");
+  t->next = NULL;
 
   while (child_node != NULL) {
     if (xmlStrEqual(child_node->name, (xmlChar *) "midi-instrument")) {
       midi_child = child_node->children;
       while (midi_child != NULL) {
         if (xmlStrEqual(midi_child->name, (xmlChar *) "midi-channel")) {
-          t.midi_channel = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
+          t->midi_channel = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
         } else if (xmlStrEqual(midi_child->name, (xmlChar *) "midi-program")) {
-          t.midi_instrument = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
+          t->midi_instrument = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
         }
         midi_child = midi_child->next;
       }
@@ -263,15 +302,13 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
     child_node = child_node->next;
   }
 
-  printf("Track %d, xml id: %s, midi channel: %d, midi instrument: %d\n", t.track_id, t.xml_id, t.midi_channel, t.midi_instrument);
-
   if (filter->first_track == NULL) {
-    filter->first_track = &t;
+    filter->first_track = t;
   } else {
     while(n->next != NULL) {
       n = n->next;
     }
-    n->next = &t;
+    n->next = t;
   }
 
 }
