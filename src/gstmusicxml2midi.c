@@ -51,7 +51,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch -v -m filesrc location=test.midi ! musicxml2midi ! wildmidi ! audioconvert ! autoaudiosink
+ * gst-launch -v -m filesrc location=test.xml ! musicxml2midi ! wildmidi ! audioconvert ! autoaudiosink
  * ]|
  * </refsect2>
  */
