@@ -66,6 +66,7 @@ G_BEGIN_DECLS
 
 typedef struct _GstMusicXml2Midi      GstMusicXml2Midi;
 typedef struct _GstMusicXml2MidiClass GstMusicXml2MidiClass;
+typedef struct _Track                 Track;
 
 struct _GstMusicXml2Midi
 {
@@ -73,12 +74,24 @@ struct _GstMusicXml2Midi
 
   GstPad *sinkpad, *srcpad;
 
+  Track *first_track;
+  int num_tracks;
+
   xmlParserCtxtPtr ctxt;
 };
 
 struct _GstMusicXml2MidiClass 
 {
   GstElementClass parent_class;
+};
+
+struct _Track
+{
+  char *xml_id;
+  int track_id;
+  int midi_channel;
+  int midi_instrument;
+  Track *next;
 };
 
 GType gst_plugin_musicxml2midi_get_type (void);

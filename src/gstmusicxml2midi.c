@@ -107,6 +107,7 @@ static gboolean gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps);
 static GstFlowReturn gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf);
 static gboolean gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event);
 static void process_element(GstMusicXml2Midi * filter, xmlNode * node);
+static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_note(GstMusicXml2Midi * filter, xmlNode * node);
 
 /* GObject vmethod implementations */
@@ -168,13 +169,15 @@ gst_musicxml2midi_init (GstMusicXml2Midi * filter,
   gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad);
   gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad);
   filter->ctxt = xmlCreatePushParserCtxt(NULL, NULL, NULL, 0, NULL);
+  filter->first_track = NULL;
+  filter->num_tracks = 0;
 }
 
 static void
 gst_musicxml2midi_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
+//  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
 
   switch (prop_id) {
     default:
@@ -187,7 +190,7 @@ static void
 gst_musicxml2midi_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
+//  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
 
   switch (prop_id) {
     default:
@@ -223,11 +226,54 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
       process_note(filter, cur_node);
       if (xmlStrEqual(cur_node->name, (xmlChar *) "note")) {
         process_note(filter, cur_node);
+      } else if (xmlStrEqual(cur_node->name, (xmlChar *) "score-part")) {
+        process_score_part(filter, cur_node);
       } else {
         process_element(filter, cur_node->children);
       }
     }
   }
+}
+
+
+static void
+process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
+{
+  Track t;
+  Track *n = filter->first_track;
+  xmlNode *child_node = node->children;
+  xmlNode *midi_child;
+  t.track_id = filter->num_tracks;
+  filter->num_tracks++;
+  t.xml_id = (char *) xmlGetProp(node, (xmlChar *) "id");
+  t.next = NULL;
+
+  while (child_node != NULL) {
+    if (xmlStrEqual(child_node->name, (xmlChar *) "midi-instrument")) {
+      midi_child = child_node->children;
+      while (midi_child != NULL) {
+        if (xmlStrEqual(midi_child->name, (xmlChar *) "midi-channel")) {
+          t.midi_channel = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
+        } else if (xmlStrEqual(midi_child->name, (xmlChar *) "midi-program")) {
+          t.midi_instrument = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, midi_child->xmlChildrenNode, 1));
+        }
+        midi_child = midi_child->next;
+      }
+    }
+    child_node = child_node->next;
+  }
+
+  printf("Track %d, xml id: %s, midi channel: %d, midi instrument: %d\n", t.track_id, t.xml_id, t.midi_channel, t.midi_instrument);
+
+  if (filter->first_track == NULL) {
+    filter->first_track = &t;
+  } else {
+    while(n->next != NULL) {
+      n = n->next;
+    }
+    n->next = &t;
+  }
+
 }
 
 
