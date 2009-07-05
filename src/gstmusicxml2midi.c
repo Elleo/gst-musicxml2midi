@@ -108,6 +108,7 @@ static GstFlowReturn gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf);
 static gboolean gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event);
 static Track *get_track_by_part (GstMusicXml2Midi * filter, xmlChar * part_id);
 static void process_element(GstMusicXml2Midi * filter, xmlNode * node);
+static void process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_note(GstMusicXml2Midi * filter, xmlNode * node);
@@ -227,8 +228,8 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
     if (cur_node->type == XML_ELEMENT_NODE) {
       if (xmlStrEqual(cur_node->name, (xmlChar *) "part")) {
         process_part(filter, cur_node);
-      } else if (xmlStrEqual(cur_node->name, (xmlChar *) "score-part")) {
-        process_score_part(filter, cur_node);
+      } else if (xmlStrEqual(cur_node->name, (xmlChar *) "partlist")) {
+        process_partlist(filter, cur_node);
       } else {
         process_element(filter, cur_node->children);
       }
@@ -236,6 +237,20 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
   }
 }
 
+
+static void
+process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
+{
+  xmlNode *child_node = node->children;
+
+  while (child_node != NULL) {
+    if (xmlStrEqual(child_node->name, (xmlChar *) "score-part")) {
+      process_score_part(filter, child_node);
+    }
+    child_node = child_node->next;
+  }
+
+}
 
 static void
 process_part(GstMusicXml2Midi * filter, xmlNode * node)
