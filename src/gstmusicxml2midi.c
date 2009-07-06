@@ -228,7 +228,7 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
     if (cur_node->type == XML_ELEMENT_NODE) {
       if (xmlStrEqual(cur_node->name, (xmlChar *) "part")) {
         process_part(filter, cur_node);
-      } else if (xmlStrEqual(cur_node->name, (xmlChar *) "partlist")) {
+      } else if (xmlStrEqual(cur_node->name, (xmlChar *) "part-list")) {
         process_partlist(filter, cur_node);
       } else {
         process_element(filter, cur_node->children);
@@ -242,14 +242,25 @@ static void
 process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
+  int num_tracks = 0;
+  char header[15];
 
   while (child_node != NULL) {
     if (xmlStrEqual(child_node->name, (xmlChar *) "score-part")) {
       process_score_part(filter, child_node);
+      num_tracks++;
     }
     child_node = child_node->next;
   }
 
+  /* Now we know about the tracks we can send the header */
+  header[0] = 'M'; header[1] = 'T'; header[2] = 'h'; header[3] = 'd'; /* MThd - MIDI Track Header */
+  header[7] = 6; /* Chunk size */
+  header[9] = 1; /* Format */
+  header[11] = num_tracks;
+  header[13] = 48; /* Time division */
+
+  printf("Header: %s\n", header);
 }
 
 static void
