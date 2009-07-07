@@ -267,13 +267,12 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
 
   /* Now we know about the tracks we can send the header */
   memset(data, 0, 15);
-  data[0] = 'M'; data[1] = 'T'; data[2] = 'h'; data[3] = 'd'; /* MThd - MIDI Track Header */
+  data[0] = 'M'; data[1] = 'T'; data[2] = 'h'; data[3] = 'd'; /* MThd - MIDI File Header */
   data[7] = 6; /* Chunk size */
   data[9] = 1; /* Format */
   data[11] = num_tracks;
   data[13] = 48; /* Time division */
 
-  printf("Header: %s\n", data);
   return buf;
 }
 
@@ -283,14 +282,16 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
   xmlNode *child_node = node->children;
   xmlNode *measure_node;
   xmlChar *part_id = xmlGetProp(node, (xmlChar *) "id");
-  GstBuffer *buf = gst_buffer_new_and_alloc(4);
+  GstBuffer *buf = gst_buffer_new_and_alloc(8);
+  char *data = (char *) GST_BUFFER_DATA(buf);
+  memset(data, 0, 8);
+  data[0] = 'M'; data[1] = 'T'; data[2] = 'r'; data[3] = 'k'; /* MTrk - MIDI Track Header */
+
   Track *t = get_track_by_part(filter, part_id);
   if (t == NULL) {
     GST_WARNING("No score-part associated with this part. This part will not be heard.");
     return buf;
   }
-
-  printf("Track: %d\n", t->track_id);
 
   while (child_node != NULL) {
     if (xmlStrEqual(child_node->name, (xmlChar *) "measure")) {
@@ -362,8 +363,8 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
-  GstBuffer *buf = gst_buffer_new_and_alloc(2);
-  int duration = 0, pitch = 0, step = 0, octave = 0;
+  GstBuffer *buf = gst_buffer_new_and_alloc(4);
+  guint8 duration = 0, pitch = 0, step = 0, octave = 0;
   gboolean rest = FALSE;
 
   while (child_node != NULL) {
@@ -375,7 +376,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node)
       pitch_child = child_node->children;
       while (pitch_child != NULL) {
         if (xmlStrEqual(pitch_child->name, (xmlChar *) "step")) {
-          step = (int) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1)[0]; 
+          step = (guint8) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1)[0]; 
         } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "octave")) {
           octave = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1));
         }
@@ -387,10 +388,11 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node)
   }
 
   if (rest) {
-    printf("Rest, duration: %d\n", duration);
+    
   } else {
-    printf("Note, pitch: %d, duration: %d\n", pitch, duration);
   }
+
+  
 
   return buf;
 }
