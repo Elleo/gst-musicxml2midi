@@ -254,7 +254,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   int num_tracks = 0;
-  GstBuffer *buf = gst_buffer_new_and_alloc(15);
+  GstBuffer *buf = gst_buffer_new_and_alloc(14);
   char *data = (char *) GST_BUFFER_DATA(buf);
 
   while (child_node != NULL) {
