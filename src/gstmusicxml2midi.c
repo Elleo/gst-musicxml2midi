@@ -315,8 +315,11 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
     child_node = child_node->next;
   }
 
+  note_buf = gst_buffer_merge(note_buf, end_buf);
+
+  guint32 *header = (guint32 *) GST_BUFFER_DATA(buf);
+  header[1] = (guint32) GST_BUFFER_SIZE(buf) - 8;
   buf = gst_buffer_merge(buf, note_buf);
-  buf = gst_buffer_merge(buf, end_buf);
 
   return buf;
 }
