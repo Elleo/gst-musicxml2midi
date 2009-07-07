@@ -107,11 +107,11 @@ static gboolean gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps);
 static GstFlowReturn gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf);
 static gboolean gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event);
 static Track *get_track_by_part (GstMusicXml2Midi * filter, xmlChar * part_id);
-static void process_element(GstMusicXml2Midi * filter, xmlNode * node);
-static void process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
-static void process_part(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_element(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
-static void process_note(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node);
 
 /* GObject vmethod implementations */
 
@@ -219,31 +219,41 @@ gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps)
 }
 
 /* Convert music xml to MIDI and push it to the src pad */
-static void
+static GstBuffer *
 process_element(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *cur_node = NULL;
+  GstBuffer *buf = NULL;
+  GstBuffer *elem_buf = NULL;
 
   for (cur_node = node; cur_node; cur_node = cur_node->next) {
     if (cur_node->type == XML_ELEMENT_NODE) {
       if (xmlStrEqual(cur_node->name, (xmlChar *) "part")) {
-        process_part(filter, cur_node);
+        elem_buf = process_part(filter, cur_node);
       } else if (xmlStrEqual(cur_node->name, (xmlChar *) "part-list")) {
-        process_partlist(filter, cur_node);
+        elem_buf = process_partlist(filter, cur_node);
       } else {
-        process_element(filter, cur_node->children);
+        elem_buf = process_element(filter, cur_node->children);
       }
     }
+    if (buf == NULL) {
+      buf = elem_buf;
+    } else if (elem_buf != NULL) {
+      buf = gst_buffer_merge(buf, elem_buf);
+    }
   }
+
+  return buf;
 }
 
 
-static void
+static GstBuffer *
 process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   int num_tracks = 0;
-  char header[15];
+  GstBuffer *buf = gst_buffer_new_and_alloc(15);
+  char *data = (char *) GST_BUFFER_DATA(buf);
 
   while (child_node != NULL) {
     if (xmlStrEqual(child_node->name, (xmlChar *) "score-part")) {
@@ -254,25 +264,28 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   }
 
   /* Now we know about the tracks we can send the header */
-  header[0] = 'M'; header[1] = 'T'; header[2] = 'h'; header[3] = 'd'; /* MThd - MIDI Track Header */
-  header[7] = 6; /* Chunk size */
-  header[9] = 1; /* Format */
-  header[11] = num_tracks;
-  header[13] = 48; /* Time division */
+  
+  data[0] = 'M'; data[1] = 'T'; data[2] = 'h'; data[3] = 'd'; /* MThd - MIDI Track Header */
+  data[7] = 6; /* Chunk size */
+  data[9] = 1; /* Format */
+  data[11] = num_tracks;
+  data[13] = 48; /* Time division */
 
-  printf("Header: %s\n", header);
+  printf("Header: %s\n", data);
+  return buf;
 }
 
-static void
+static GstBuffer *
 process_part(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   xmlNode *measure_node;
   xmlChar *part_id = xmlGetProp(node, (xmlChar *) "id");
+  GstBuffer *buf = gst_buffer_new_and_alloc(4);
   Track *t = get_track_by_part(filter, part_id);
   if (t == NULL) {
     GST_WARNING("No score-part associated with this part. This part will not be heard.");
-    return;
+    return buf;
   }
 
   printf("Track: %d\n", t->track_id);
@@ -282,17 +295,19 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
         measure_node = child_node->children;
         while (measure_node != NULL) {
           if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
-            process_note(filter, measure_node);
+            buf = gst_buffer_merge(buf, process_note(filter, measure_node));
           }
           measure_node = measure_node->next;
         }
     }
     child_node = child_node->next;
   }
+
+  return buf;
 }
 
 
-static Track*
+static Track *
 get_track_by_part(GstMusicXml2Midi * filter, xmlChar * part_id) {
   Track *t = filter->first_track;
   while(t != NULL && !xmlStrEqual(t->xml_id, part_id)) {
@@ -340,11 +355,12 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
 }
 
 
-static void
+static GstBuffer *
 process_note(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
+  GstBuffer *buf = gst_buffer_new_and_alloc(2);
   int duration = 0, pitch = 0, step = 0, octave = 0;
   gboolean rest = FALSE;
 
@@ -373,6 +389,8 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node)
   } else {
     printf("Note, pitch: %d, duration: %d\n", pitch, duration);
   }
+
+  return buf;
 }
 
 
@@ -382,7 +400,8 @@ gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event)
   if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
     GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (gst_pad_get_parent (pad));
     xmlNode *root = xmlDocGetRootElement(filter->ctxt->myDoc);
-    process_element(filter, root);
+    GstBuffer *buf = process_element(filter, root);
+    gst_pad_push (filter->srcpad, buf);
   } 
   return TRUE;
 }
