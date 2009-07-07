@@ -266,7 +266,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   }
 
   /* Now we know about the tracks we can send the header */
-  memset(data, 0, 15);
+  memset(data, 0, 14);
   data[0] = 'M'; data[1] = 'T'; data[2] = 'h'; data[3] = 'd'; /* MThd - MIDI File Header */
   data[7] = 6; /* Chunk size */
   data[9] = 1; /* Format */
@@ -318,7 +318,8 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
   note_buf = gst_buffer_merge(note_buf, end_buf);
 
   guint32 *header = (guint32 *) GST_BUFFER_DATA(buf);
-  header[1] = (guint32) GST_BUFFER_SIZE(buf) - 8;
+  header[1] = (guint32) GST_BUFFER_SIZE(note_buf);
+
   buf = gst_buffer_merge(buf, note_buf);
 
   return buf;
