@@ -61,6 +61,7 @@
 #endif
 
 #include <gst/gst.h>
+#include <string.h>
 
 #include "gstmusicxml2midi.h"
 
@@ -224,9 +225,10 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
 {
   xmlNode *cur_node = NULL;
   GstBuffer *buf = NULL;
-  GstBuffer *elem_buf = NULL;
+  GstBuffer *elem_buf;
 
   for (cur_node = node; cur_node; cur_node = cur_node->next) {
+    elem_buf = NULL;
     if (cur_node->type == XML_ELEMENT_NODE) {
       if (xmlStrEqual(cur_node->name, (xmlChar *) "part")) {
         elem_buf = process_part(filter, cur_node);
@@ -264,7 +266,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   }
 
   /* Now we know about the tracks we can send the header */
-  
+  memset(data, 0, 15);
   data[0] = 'M'; data[1] = 'T'; data[2] = 'h'; data[3] = 'd'; /* MThd - MIDI Track Header */
   data[7] = 6; /* Chunk size */
   data[9] = 1; /* Format */
