@@ -285,12 +285,12 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
   GstBuffer *buf = gst_buffer_new_and_alloc(8);
   char *data = (char *) GST_BUFFER_DATA(buf);
   GstBuffer *note_buf = NULL;
-  GstBuffer *end_buf = gst_buffer_new_and_alloc(2);
+  GstBuffer *end_buf = gst_buffer_new_and_alloc(3);
   guint8 *end_data = GST_BUFFER_DATA(end_buf);
 
   memset(data, 0, 8);
   data[0] = 'M'; data[1] = 'T'; data[2] = 'r'; data[3] = 'k'; /* MTrk - MIDI Track Header */
-  end_data[0] = 0xFF; end_data[1] = 0x2f;
+  end_data[0] = 0xFF; end_data[1] = 0x2f; end_data[2] = 0x00;
 
   Track *t = get_track_by_part(filter, part_id);
   if (t == NULL) {
@@ -318,7 +318,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
   note_buf = gst_buffer_merge(note_buf, end_buf);
 
   guint32 *header = (guint32 *) GST_BUFFER_DATA(buf);
-  header[1] = (guint32) GST_BUFFER_SIZE(note_buf);
+  header[1] = g_htonl(GST_BUFFER_SIZE(note_buf));
 
   buf = gst_buffer_merge(buf, note_buf);
 
