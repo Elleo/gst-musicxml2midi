@@ -8,7 +8,7 @@ suitable for direct synthesis via the wildmidi or timidity elements.
 HOW TO USE IT
 -------------
 
- To synthesis MusicXML:
+ To synthesize MusicXML:
  
   gst-launch filesrc location=song.xml ! musicxml2midi ! wildmidi ! audioconvert ! autoaudiosink
 
