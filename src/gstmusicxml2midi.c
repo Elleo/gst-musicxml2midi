@@ -112,6 +112,8 @@ static GstBuffer *process_element(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_time(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node);
 
 /* GObject vmethod implementations */
@@ -285,6 +287,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
   GstBuffer *buf = gst_buffer_new_and_alloc(8);
   char *data = (char *) GST_BUFFER_DATA(buf);
   GstBuffer *note_buf = NULL;
+  GstBuffer *tmp_buf = NULL;
   GstBuffer *end_buf = gst_buffer_new_and_alloc(3);
   guint8 *end_data = GST_BUFFER_DATA(end_buf);
 
@@ -302,12 +305,17 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
     if (xmlStrEqual(child_node->name, (xmlChar *) "measure")) {
         measure_node = child_node->children;
         while (measure_node != NULL) {
-          if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
-            if(note_buf == NULL) {
-              note_buf = process_note(filter, measure_node);
-            } else {
-              note_buf = gst_buffer_merge(note_buf, process_note(filter, measure_node));
-            }
+          tmp_buf = NULL;
+          if (xmlStrEqual(measure_node->name, (xmlChar *) "attributes")) {
+            tmp_buf = process_attributes(filter, measure_node);
+          } else if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
+            tmp_buf = process_note(filter, measure_node);
+          }
+          
+          if (note_buf == NULL) {
+            note_buf = tmp_buf;
+          } else if (tmp_buf != NULL) {
+            tmp_buf = gst_buffer_merge(note_buf, tmp_buf);
           }
           measure_node = measure_node->next;
         }
@@ -334,6 +342,7 @@ get_track_by_part(GstMusicXml2Midi * filter, xmlChar * part_id) {
   }
   return t;
 }
+
 
 static void
 process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
@@ -371,6 +380,68 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
     n->next = t;
   }
 
+}
+
+
+static GstBuffer *
+process_attributes(GstMusicXml2Midi * filter, xmlNode * node)
+{
+  xmlNode *child_node = node->children;
+  GstBuffer *buf = NULL;
+  GstBuffer *tmp_buf;
+
+  while (child_node != NULL) {
+    tmp_buf = NULL;
+            
+    if (xmlStrEqual(child_node->name, (xmlChar *) "time")) {
+      buf = process_time(filter, child_node);
+    }
+
+    if (buf == NULL) {
+      buf = tmp_buf;
+    } else if (tmp_buf != NULL) {
+      buf = gst_buffer_merge(buf, tmp_buf);
+    }
+
+    child_node = child_node->next;
+  }
+
+
+
+  return buf;
+}
+
+static GstBuffer *
+process_time(GstMusicXml2Midi * filter, xmlNode * node)
+{
+  xmlNode *child_node = node->children;
+  GstBuffer *buf = gst_buffer_new_and_alloc(7);
+  guint8 *data = GST_BUFFER_DATA(buf);
+  guint8 beats = 0;
+  guint8 beat_type = 0;
+
+  while (child_node != NULL) {
+    if (xmlStrEqual(child_node->name, (xmlChar *) "beats")) {
+      beats = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, child_node->xmlChildrenNode, 1));
+    } else if (xmlStrEqual(child_node->name, (xmlChar *) "beat-type")) {
+      beat_type = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, child_node->xmlChildrenNode, 1));
+    }
+    child_node = child_node->next;
+  }
+
+  printf("Beats: %d, beat type: %d\n", beats, beat_type);
+  if(beats != 0 && beat_type != 0) {
+    data[0] = 0xff; // Meta event
+    data[1] = 0x58; // Set Tempo
+    data[2] = 4; // Event data length
+    data[3] = beats;
+    data[4] = beat_type;
+    data[5] = 24; // Metronome
+    data[6] = 8; // 32nds
+    return buf;
+  } else {
+    return NULL;
+  }
 }
 
 
