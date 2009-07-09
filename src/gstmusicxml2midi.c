@@ -312,6 +312,13 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
           tmp_buf = NULL;
           if (xmlStrEqual(measure_node->name, (xmlChar *) "attributes")) {
             tmp_buf = process_attributes(filter, measure_node);
+            /* Set patch after attributes */
+            GstBuffer *patch_buf = gst_buffer_new_and_alloc(3);
+            guint8 *patch_data = GST_BUFFER_DATA(patch_buf);
+            patch_data[0] = 0; /* Delta time */
+            patch_data[1] = (0xc << 4) | t->midi_channel; /* Set patch on channel */
+            patch_data[2] = t->midi_instrument;
+            tmp_buf = gst_buffer_merge(tmp_buf, patch_buf);
           } else if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
             tmp_buf = process_note(filter, measure_node, t);
           }
@@ -358,7 +365,7 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
   t->track_id = filter->num_tracks;
   t->volume = 127;
   t->midi_channel = 0;
-  t->midi_instrument = 26; // Piano
+  t->midi_instrument = 0;
   filter->num_tracks++;
   t->xml_id = xmlGetProp(node, (xmlChar *) "id");
   t->next = NULL;
