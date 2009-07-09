@@ -494,6 +494,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
   GstBuffer *buf = gst_buffer_new_and_alloc(8);
   guint8 *data = GST_BUFFER_DATA(buf);
   guint8 duration = 0, pitch = 0, step = 0, octave = 0;
+  gint8 alter = 0;
   gboolean rest = FALSE;
 
   while (child_node != NULL) {
@@ -506,12 +507,22 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
       while (pitch_child != NULL) {
         if (xmlStrEqual(pitch_child->name, (xmlChar *) "step")) {
           step = (guint8) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1)[0]; 
+          if (step < 72) {
+            /* ASCII offset to capital A */
+            step -= 65;
+          } else {
+            /* ASCII offset to lower case a */
+            step -= 97;
+          }
+          printf("Step: %d\n", step);
         } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "octave")) {
           octave = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1));
+        } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "alter")) {
+          alter = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1));
         }
         pitch_child = pitch_child->next;
       }
-      pitch = (8 * octave) + step;
+      pitch = (12 * (octave + 1)) + step + alter - 2; /* Convert to MIDI note numbers */
     } 
     child_node = child_node->next;
   }
