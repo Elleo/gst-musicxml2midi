@@ -316,7 +316,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
             GstBuffer *patch_buf = gst_buffer_new_and_alloc(3);
             guint8 *patch_data = GST_BUFFER_DATA(patch_buf);
             patch_data[0] = 0; /* Delta time */
-            patch_data[1] = (0xc << 4) | t->midi_channel; /* Set patch on channel */
+            patch_data[1] = 0xc0 | t->midi_channel; /* Set patch on channel */
             patch_data[2] = t->midi_instrument;
             tmp_buf = gst_buffer_merge(tmp_buf, patch_buf);
           } else if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
@@ -514,7 +514,6 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
             /* ASCII offset to lower case a */
             step -= 97;
           }
-          printf("Step: %d\n", step);
         } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "octave")) {
           octave = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1));
         } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "alter")) {
@@ -532,12 +531,12 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
   } else {
     /* Note on */
     data[0] = 0x00;
-    data[1] = (0x9 << 4) | track->midi_channel;
+    data[1] = 0x90 | track->midi_channel;
     data[2] = pitch;
     data[3] = track->volume;
     /* Note off */
     data[4] = duration;
-    data[5] = (0x8 << 4) | track->midi_channel;
+    data[5] = 0x80 | track->midi_channel;
     data[6] = pitch;
     data[7] = 0;
   }
