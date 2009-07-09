@@ -68,7 +68,7 @@
 GST_DEBUG_CATEGORY_STATIC (gst_musicxml2midi_debug);
 #define GST_CAT_DEFAULT gst_musicxml2midi_debug
 
-#define TIME_DIVISION 48
+#define TIME_DIVISION 384
 
 /* Filter signals and args */
 enum
@@ -261,6 +261,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   int num_tracks = 0;
   GstBuffer *buf = gst_buffer_new_and_alloc(14);
   char *data = (char *) GST_BUFFER_DATA(buf);
+  guint16 *data16 = (guint16 *) GST_BUFFER_DATA(buf);
 
   while (child_node != NULL) {
     if (xmlStrEqual(child_node->name, (xmlChar *) "score-part")) {
@@ -276,7 +277,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   data[7] = 6; /* Chunk size */
   data[9] = 1; /* Format */
   data[11] = num_tracks;
-  data[13] = TIME_DIVISION;
+  data16[6] = g_htons(TIME_DIVISION);
 
   return buf;
 }
@@ -470,8 +471,9 @@ process_key(GstMusicXml2Midi * filter, xmlNode * node)
   data[0] = 0x00; /* Delta time */
   data[1] = 0xff; /* Meta event */
   data[2] = 0x59; /* Set key signature */
-  data[3] = fifths;
-  data[4] = 0; /* Scale */
+  data[3] = 2; /* Event data length */
+  data[4] = fifths;
+  data[5] = 0; /* Scale */
 
   return buf;
 }
