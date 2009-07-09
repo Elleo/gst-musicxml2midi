@@ -68,6 +68,8 @@
 GST_DEBUG_CATEGORY_STATIC (gst_musicxml2midi_debug);
 #define GST_CAT_DEFAULT gst_musicxml2midi_debug
 
+#define TIME_DIVISION 48
+
 /* Filter signals and args */
 enum
 {
@@ -115,7 +117,7 @@ static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_time(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_key(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track);
 
 /* GObject vmethod implementations */
 
@@ -274,7 +276,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
   data[7] = 6; /* Chunk size */
   data[9] = 1; /* Format */
   data[11] = num_tracks;
-  data[13] = 48; /* Time division */
+  data[13] = TIME_DIVISION;
 
   return buf;
 }
@@ -310,7 +312,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
           if (xmlStrEqual(measure_node->name, (xmlChar *) "attributes")) {
             tmp_buf = process_attributes(filter, measure_node);
           } else if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
-            tmp_buf = process_note(filter, measure_node);
+            tmp_buf = process_note(filter, measure_node, t);
           }
           
           if (note_buf == NULL) {
@@ -353,6 +355,9 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
   xmlNode *child_node = node->children;
   xmlNode *midi_child;
   t->track_id = filter->num_tracks;
+  t->volume = 127;
+  t->midi_channel = 0;
+  t->midi_instrument = 26; // Piano
   filter->num_tracks++;
   t->xml_id = xmlGetProp(node, (xmlChar *) "id");
   t->next = NULL;
@@ -432,14 +437,14 @@ process_time(GstMusicXml2Midi * filter, xmlNode * node)
   }
 
   if(beats != 0 && beat_type != 0) {
-    data[0] = 0x00; // Delta time
-    data[1] = 0xff; // Meta event
-    data[2] = 0x58; // Set tempo
-    data[3] = 4; // Event data length
+    data[0] = 0x00; /* Delta time */
+    data[1] = 0xff; /* Meta event */
+    data[2] = 0x58; /* Set tempo */
+    data[3] = 4; /* Event data length */
     data[4] = beats;
     data[5] = beat_type;
-    data[6] = 24; // Metronome
-    data[7] = 8; // 32nds
+    data[6] = 24; /* Metronome */
+    data[7] = 8; /* 32nds */
     return buf;
   } else {
     return NULL;
@@ -462,22 +467,22 @@ process_key(GstMusicXml2Midi * filter, xmlNode * node)
     child_node = child_node->next;
   }
 
-  data[0] = 0x00; // Delta time
-  data[1] = 0xff; // Meta event
-  data[2] = 0x59; // Set key signature
+  data[0] = 0x00; /* Delta time */
+  data[1] = 0xff; /* Meta event */
+  data[2] = 0x59; /* Set key signature */
   data[3] = fifths;
-  data[4] = 0; // Scale
+  data[4] = 0; /* Scale */
 
   return buf;
 }
 
 
 static GstBuffer *
-process_note(GstMusicXml2Midi * filter, xmlNode * node)
+process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
-  GstBuffer *buf = gst_buffer_new_and_alloc(4);
+  GstBuffer *buf = gst_buffer_new_and_alloc(8);
   guint8 *data = GST_BUFFER_DATA(buf);
   guint8 duration = 0, pitch = 0, step = 0, octave = 0;
   gboolean rest = FALSE;
@@ -505,10 +510,16 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node)
   if (rest) {
     
   } else {
-    data[0] = 0x00; // Delta offset
-    data[1] = (0x9 << 4) | 0x1;
+    /* Note on */
+    data[0] = 0x00;
+    data[1] = (0x9 << 4) | track->midi_channel;
     data[2] = pitch;
-    data[3] = 50;
+    data[3] = track->volume;
+    /* Note off */
+    data[4] = duration;
+    data[5] = (0x8 << 4) | track->midi_channel;
+    data[6] = pitch;
+    data[7] = 0;
   }
 
   return buf;
