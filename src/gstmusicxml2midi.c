@@ -522,7 +522,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
         }
         pitch_child = pitch_child->next;
       }
-      pitch = (12 * (octave + 1)) + step + alter - 2; /* Convert to MIDI note numbers */
+      pitch = (12 * (octave + 1)) + step + alter - 2; /* Convert to MIDI note numbers (C4 == 60) */
     } 
     child_node = child_node->next;
   }
