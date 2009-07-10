@@ -114,7 +114,7 @@ static GstBuffer *process_element(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_part(GstMusicXml2Midi * filter, xmlNode * node);
 static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node);
+static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track *t);
 static GstBuffer *process_time(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_key(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track);
@@ -313,7 +313,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
         while (measure_node != NULL) {
           tmp_buf = NULL;
           if (xmlStrEqual(measure_node->name, (xmlChar *) "attributes")) {
-            tmp_buf = process_attributes(filter, measure_node);
+            tmp_buf = process_attributes(filter, measure_node, t);
             if (tmp_buf == NULL) {
               measure_node = measure_node->next;
               continue;
@@ -372,6 +372,7 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
   t->volume = 127;
   t->midi_channel = 0;
   t->midi_instrument = 0;
+  t->divisions = 1;
   filter->num_tracks++;
   t->xml_id = xmlGetProp(node, (xmlChar *) "id");
   t->next = NULL;
@@ -404,7 +405,7 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static GstBuffer *
-process_attributes(GstMusicXml2Midi * filter, xmlNode * node)
+process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track * t)
 {
   xmlNode *child_node = node->children;
   GstBuffer *buf = NULL;
@@ -417,6 +418,8 @@ process_attributes(GstMusicXml2Midi * filter, xmlNode * node)
       tmp_buf = process_time(filter, child_node);
     } else if (xmlStrEqual(child_node->name, (xmlChar *) "key")) {
       tmp_buf = process_key(filter, child_node);
+    } else if (xmlStrEqual(child_node->name, (xmlChar *) "divisions")) {
+      t->divisions = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, child_node->xmlChildrenNode, 1));
     }
 
     if (buf == NULL) {
@@ -551,7 +554,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
     off_data[0] = 0x80 | track->midi_channel;
     off_data[1] = pitch;
     off_data[2] = 0;
-    off_buf = gst_buffer_merge(get_vlv(duration * TIME_DIVISION), off_buf);
+    off_buf = gst_buffer_merge(get_vlv(duration * TIME_DIVISION / track->divisions), off_buf);
     buf = gst_buffer_merge(buf, off_buf);
   }
 

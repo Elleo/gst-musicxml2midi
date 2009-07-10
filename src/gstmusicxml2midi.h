@@ -92,6 +92,7 @@ struct _Track
   guint8 midi_channel;
   guint8 midi_instrument;
   guint8 volume;
+  guint8 divisions;
   Track *next;
 };
 
