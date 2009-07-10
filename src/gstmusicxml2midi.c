@@ -314,6 +314,10 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
           tmp_buf = NULL;
           if (xmlStrEqual(measure_node->name, (xmlChar *) "attributes")) {
             tmp_buf = process_attributes(filter, measure_node);
+            if (tmp_buf == NULL) {
+              measure_node = measure_node->next;
+              continue;
+            }
             /* Set patch after attributes */
             GstBuffer *patch_buf = gst_buffer_new_and_alloc(3);
             guint8 *patch_data = GST_BUFFER_DATA(patch_buf);
