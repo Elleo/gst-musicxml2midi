@@ -118,6 +118,8 @@ static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_time(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_key(GstMusicXml2Midi * filter, xmlNode * node);
 static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track);
+static GstBuffer *get_vlv(guint32 val);
+
 
 /* GObject vmethod implementations */
 
@@ -491,8 +493,10 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
-  GstBuffer *buf = gst_buffer_new_and_alloc(8);
+  GstBuffer *buf = gst_buffer_new_and_alloc(4);
+  GstBuffer *off_buf = gst_buffer_new_and_alloc(3);
   guint8 *data = GST_BUFFER_DATA(buf);
+  guint8 *off_data = GST_BUFFER_DATA(off_buf);
   guint8 duration = 0, pitch = 0, step = 0, octave = 0;
   gint8 alter = 0;
   gboolean rest = FALSE;
@@ -534,15 +538,44 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
     data[1] = 0x90 | track->midi_channel;
     data[2] = pitch;
     data[3] = track->volume;
+
     /* Note off */
-    data[4] = duration;
-    data[5] = 0x80 | track->midi_channel;
-    data[6] = pitch;
-    data[7] = 0;
+    off_data[0] = 0x80 | track->midi_channel;
+    off_data[1] = pitch;
+    off_data[2] = 0;
+    off_buf = gst_buffer_merge(get_vlv(duration * TIME_DIVISION), off_buf);
+    buf = gst_buffer_merge(buf, off_buf);
   }
 
   return buf;
 }
+
+
+/* Return a buffer containing a variable length value (vlv)
+ * suitable for use as delta times */
+static GstBuffer * 
+get_vlv (guint32 val)
+{
+  // Calculate how many bytes we need
+  int len = 1;
+  while ( ((val >> 7 * len) & 0x7f) != 0 ) {
+    len++;
+  }
+
+  GstBuffer *buf = gst_buffer_new_and_alloc(len);
+  guint8 *data = GST_BUFFER_DATA(buf);
+  int i;
+  
+  for(i = len - 1; i > -1; i--) {
+    if (i != 0) {
+      data[(len - 1) - i] = 0x80 | ((val >> 7 * i) & 0x7f);
+    } else {
+      data[(len - 1) - i] = val & 0x7f;
+    }
+  }
+
+  return buf;
+} 
 
 
 static gboolean
