@@ -516,11 +516,15 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
         if (xmlStrEqual(pitch_child->name, (xmlChar *) "step")) {
           step = (guint8) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1)[0]; 
           if (step < 72) {
-            /* ASCII offset to capital A */
-            step -= 65;
+            /* ASCII offset to capital C */
+            step -= 67;
           } else {
-            /* ASCII offset to lower case a */
-            step -= 97;
+            /* ASCII offset to lower case c */
+            step -= 99;
+          }
+          step = step * 2;
+          if (step > 5) { /* E */
+            step--;
           }
         } else if (xmlStrEqual(pitch_child->name, (xmlChar *) "octave")) {
           octave = atoi((char *) xmlNodeListGetString(filter->ctxt->myDoc, pitch_child->xmlChildrenNode, 1));
@@ -529,7 +533,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
         }
         pitch_child = pitch_child->next;
       }
-      pitch = (12 * (octave + 1)) + step + alter - 2; /* Convert to MIDI note numbers (C4 == 60) */
+      pitch = (12 * (octave + 1)) + step + alter; /* Convert to MIDI note numbers (C4 == 60) */
     } 
     child_node = child_node->next;
   }
