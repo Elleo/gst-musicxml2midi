@@ -598,7 +598,7 @@ gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event)
     GstBuffer *buf = process_element(filter, root);
     gst_pad_push (filter->srcpad, buf);
   } 
-  return TRUE;
+  return gst_pad_event_default (pad, event);
 }
 
 
