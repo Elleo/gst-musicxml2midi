@@ -62,6 +62,7 @@
 
 #include <gst/gst.h>
 #include <string.h>
+#include <math.h>
 
 #include "gstmusicxml2midi.h"
 
@@ -457,10 +458,10 @@ process_time(GstMusicXml2Midi * filter, xmlNode * node)
   if(beats != 0 && beat_type != 0) {
     data[0] = 0x00; /* Delta time */
     data[1] = 0xff; /* Meta event */
-    data[2] = 0x58; /* Set tempo */
+    data[2] = 0x58; /* Set time signature */
     data[3] = 4; /* Event data length */
     data[4] = beats;
-    data[5] = beat_type;
+    data[5] = (guint8) sqrt(beat_type);
     data[6] = 24; /* Metronome */
     data[7] = 8; /* 32nds */
     return buf;
