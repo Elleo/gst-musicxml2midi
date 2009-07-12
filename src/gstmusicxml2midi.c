@@ -373,6 +373,7 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
   t->midi_channel = 0;
   t->midi_instrument = 0;
   t->divisions = 1;
+  t->rest = 0;
   filter->num_tracks++;
   t->xml_id = xmlGetProp(node, (xmlChar *) "id");
   t->next = NULL;
@@ -500,7 +501,7 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
-  GstBuffer *buf = gst_buffer_new_and_alloc(4);
+  GstBuffer *buf = gst_buffer_new_and_alloc(3);
   GstBuffer *off_buf = gst_buffer_new_and_alloc(3);
   guint8 *data = GST_BUFFER_DATA(buf);
   guint8 *off_data = GST_BUFFER_DATA(off_buf);
@@ -542,13 +543,14 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
   }
 
   if (rest) {
-    
+    track->rest += duration;  
   } else {
     /* Note on */
-    data[0] = 0x00;
-    data[1] = 0x90 | track->midi_channel;
-    data[2] = pitch;
-    data[3] = track->volume;
+    data[0] = 0x90 | track->midi_channel;
+    data[1] = pitch;
+    data[2] = track->volume;
+    buf = gst_buffer_merge(get_vlv(track->rest * TIME_DIVISION / track->divisions), buf);
+    track->rest = 0;
 
     /* Note off */
     off_data[0] = 0x80 | track->midi_channel;
