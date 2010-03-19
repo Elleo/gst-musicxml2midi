@@ -46,12 +46,14 @@
 /**
  * SECTION:element-musicxml2midi
  *
- * FIXME:Describe musicxml2midi here.
+ * Converts MusicXML in to MIDI format suitable for either direct synthesis 
+ * via a MIDI element (such as wildmidi or timidity) or saving as a MIDI file.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
  * gst-launch -v -m filesrc location=test.xml ! musicxml2midi ! wildmidi ! audioconvert ! autoaudiosink
+ * gst-launch -v -m filesrc location=test.xml ! musicxml2midi ! filesink location=test.mid
  * ]|
  * </refsect2>
  */
