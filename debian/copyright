@@ -1,0 +1,22 @@
+This package was debianized by Michael Sheldon <mike@mikeasoft.com> on
+Fri, 19 Mar 2010 12:29:15 +0000.
+
+It was downloaded from <http://github.com/Elleo/gst-musicxml2midi>
+
+Upstream Author(s):
+
+    Michael Sheldon <mike@mikeasoft.com
+
+Copyright:
+
+    <Copyright (C) 2010 Michael Sheldon>
+
+License:
+
+    LGPL 2.1
+
+The Debian packaging is copyright 2010, Michael Sheldon <mike@mikeasoft.com>
+and is licensed under the GPL, see `/usr/share/common-licenses/GPL'.
+
+# Please also look if there are files or directories which have a
+# different copyright/license attached and list them here.

@@ -1,0 +1,14 @@
+Source: gst-musicxml2midi
+Section: libs
+Priority: extra
+Maintainer: Michael Sheldon <mike@mikeasoft.com>
+Build-Depends: autoconf (>= 2.52), automake (>= 1.7), libtool (>= 1.5.0), pkg-config (>= 0.11.0), debhelper (>= 7), libgstreamer-plugins-base0.10-dev, libxml2-dev
+Standards-Version: 3.8.0
+Homepage: http://github.com/Elleo/gst-musicxml2midi
+
+Package: gst-musicxml2midi
+Architecture: any
+Recommends: gstreamer0.10-plugins-bad
+Depends: ${shlibs:Depends}, ${misc:Depends}, gstreamer0.10-plugins-base, libxml2
+Description: GStreamer plugin for converting MusicXML to MIDI.
+ A GStreamer plugin allowing for the direct synthesis of MusicXML files within the GStreamer framework.
