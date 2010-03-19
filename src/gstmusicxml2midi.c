@@ -658,5 +658,5 @@ GST_PLUGIN_DEFINE (
     VERSION,
     "LGPL",
     "Michael Sheldon <mike@mikeasoft.com>",
-    "http://www.mikeasoft.com"
+    "http://github.com/Elleo/gst-musicxml2midi"
 )
