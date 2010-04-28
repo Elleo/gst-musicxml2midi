@@ -636,7 +636,6 @@ musicxml2midi_init (GstPlugin * musicxml2midi)
 {
   /* debug category for fltering log messages
    *
-   * exchange the string ' musicxml2midi' with your description
    */
   GST_DEBUG_CATEGORY_INIT (gst_musicxml2midi_debug, "musicxml2midi",
       0, " musicxml2midi");
@@ -646,8 +645,6 @@ musicxml2midi_init (GstPlugin * musicxml2midi)
 }
 
 /* gstreamer looks for this structure to register musicxml2midis
- *
- * exchange the string ' musicxml2midi' with your musicxml2midi description
  */
 GST_PLUGIN_DEFINE (
     GST_VERSION_MAJOR,
