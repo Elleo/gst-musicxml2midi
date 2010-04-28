@@ -92,7 +92,7 @@ enum
 static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("text/xml")
+    GST_STATIC_CAPS ("application/xml")
     );
 
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
@@ -251,7 +251,7 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
     if (buf == NULL) {
       buf = elem_buf;
     } else if (elem_buf != NULL) {
-      buf = gst_buffer_merge(buf, elem_buf);
+      buf = gst_buffer_join(buf, elem_buf);
     }
   }
 
@@ -327,7 +327,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
             patch_data[0] = 0; /* Delta time */
             patch_data[1] = 0xc0 | t->midi_channel; /* Set patch on channel */
             patch_data[2] = t->midi_instrument;
-            tmp_buf = gst_buffer_merge(tmp_buf, patch_buf);
+            tmp_buf = gst_buffer_join(tmp_buf, patch_buf);
           } else if (xmlStrEqual(measure_node->name, (xmlChar *) "note")) {
             tmp_buf = process_note(filter, measure_node, t);
           }
@@ -335,7 +335,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
           if (note_buf == NULL) {
             note_buf = tmp_buf;
           } else if (tmp_buf != NULL) {
-            note_buf = gst_buffer_merge(note_buf, tmp_buf);
+            note_buf = gst_buffer_join(note_buf, tmp_buf);
           }
           measure_node = measure_node->next;
         }
@@ -343,12 +343,12 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
     child_node = child_node->next;
   }
 
-  note_buf = gst_buffer_merge(note_buf, end_buf);
+  note_buf = gst_buffer_join(note_buf, end_buf);
 
   guint32 *header = (guint32 *) GST_BUFFER_DATA(buf);
   header[1] = g_htonl(GST_BUFFER_SIZE(note_buf));
 
-  buf = gst_buffer_merge(buf, note_buf);
+  buf = gst_buffer_join(buf, note_buf);
 
   return buf;
 }
@@ -429,7 +429,7 @@ process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track * t)
     if (buf == NULL) {
       buf = tmp_buf;
     } else if (tmp_buf != NULL) {
-      buf = gst_buffer_merge(buf, tmp_buf);
+      buf = gst_buffer_join(buf, tmp_buf);
     }
 
     child_node = child_node->next;
@@ -552,15 +552,15 @@ process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
     data[0] = 0x90 | track->midi_channel;
     data[1] = pitch;
     data[2] = track->volume;
-    buf = gst_buffer_merge(get_vlv(track->rest * TIME_DIVISION / track->divisions), buf);
+    buf = gst_buffer_join(get_vlv(track->rest * TIME_DIVISION / track->divisions), buf);
     track->rest = 0;
 
     /* Note off */
     off_data[0] = 0x80 | track->midi_channel;
     off_data[1] = pitch;
     off_data[2] = 0;
-    off_buf = gst_buffer_merge(get_vlv(duration * TIME_DIVISION / track->divisions), off_buf);
-    buf = gst_buffer_merge(buf, off_buf);
+    off_buf = gst_buffer_join(get_vlv(duration * TIME_DIVISION / track->divisions), off_buf);
+    buf = gst_buffer_join(buf, off_buf);
   }
 
   return buf;
