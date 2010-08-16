@@ -634,7 +634,7 @@ gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf)
 static gboolean
 musicxml2midi_init (GstPlugin * musicxml2midi)
 {
-  /* debug category for fltering log messages
+  /* debug category for filtering log messages
    *
    */
   GST_DEBUG_CATEGORY_INIT (gst_musicxml2midi_debug, "musicxml2midi",
