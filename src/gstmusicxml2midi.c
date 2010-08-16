@@ -101,7 +101,7 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS ("audio/midi")
     );
 
-GST_BOILERPLATE (GstMusicXml2Midi, gst_musicxml2midi, GstElement,
+GST_BOILERPLATE (GstMusicXml2MidiParser, gst_musicxml2midi, GstElement,
     GST_TYPE_ELEMENT);
 
 static void gst_musicxml2midi_set_property (GObject * object, guint prop_id,
@@ -112,15 +112,15 @@ static void gst_musicxml2midi_get_property (GObject * object, guint prop_id,
 static gboolean gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps);
 static GstFlowReturn gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf);
 static gboolean gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event);
-static Track *get_track_by_part (GstMusicXml2Midi * filter, xmlChar * part_id);
-static GstBuffer *process_element(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_partlist(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_part(GstMusicXml2Midi * filter, xmlNode * node);
-static void process_score_part(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track *t);
-static GstBuffer *process_time(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_key(GstMusicXml2Midi * filter, xmlNode * node);
-static GstBuffer *process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track);
+static Track *get_track_by_part (GstMusicXml2MidiParser * filter, xmlChar * part_id);
+static GstBuffer *process_element(GstMusicXml2MidiParser * filter, xmlNode * node);
+static GstBuffer *process_partlist(GstMusicXml2MidiParser * filter, xmlNode * node);
+static GstBuffer *process_part(GstMusicXml2MidiParser * filter, xmlNode * node);
+static void process_score_part(GstMusicXml2MidiParser * filter, xmlNode * node);
+static GstBuffer *process_attributes(GstMusicXml2MidiParser * filter, xmlNode * node, Track *t);
+static GstBuffer *process_time(GstMusicXml2MidiParser * filter, xmlNode * node);
+static GstBuffer *process_key(GstMusicXml2MidiParser * filter, xmlNode * node);
+static GstBuffer *process_note(GstMusicXml2MidiParser * filter, xmlNode * node, Track * track);
 static GstBuffer *get_vlv(guint32 val);
 
 
@@ -132,7 +132,7 @@ gst_musicxml2midi_base_init (gpointer gclass)
   GstElementClass *element_class = GST_ELEMENT_CLASS (gclass);
 
   gst_element_class_set_details_simple(element_class,
-    "MusicXml2Midi",
+    "MusicXml2MidiParser",
     "audio",
     "Converts musicxml to midi format allowing playback via a standard midi synthesizer",
     "Michael Sheldon <mike@mikeasoft.com>");
@@ -145,7 +145,7 @@ gst_musicxml2midi_base_init (gpointer gclass)
 
 /* initialize the musicxml2midi's class */
 static void
-gst_musicxml2midi_class_init (GstMusicXml2MidiClass * klass)
+gst_musicxml2midi_class_init (GstMusicXml2MidiParserClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
@@ -163,8 +163,8 @@ gst_musicxml2midi_class_init (GstMusicXml2MidiClass * klass)
  * initialize instance structure
  */
 static void
-gst_musicxml2midi_init (GstMusicXml2Midi * filter,
-    GstMusicXml2MidiClass * gclass)
+gst_musicxml2midi_init (GstMusicXml2MidiParser * filter,
+    GstMusicXml2MidiParserClass * gclass)
 {
   filter->sinkpad = gst_pad_new_from_static_template (&sink_factory, "sink");
   gst_pad_set_setcaps_function (filter->sinkpad,
@@ -191,7 +191,7 @@ static void
 gst_musicxml2midi_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-//  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
+//  GstMusicXml2MidiParser *filter = GST_MUSICXML2MIDIPARSER (object);
 
   switch (prop_id) {
     default:
@@ -204,7 +204,7 @@ static void
 gst_musicxml2midi_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-//  GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (object);
+//  GstMusicXml2MidiParser *filter = GST_MUSICXML2MIDIPARSER (object);
 
   switch (prop_id) {
     default:
@@ -219,10 +219,10 @@ gst_musicxml2midi_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps)
 {
-  GstMusicXml2Midi *filter;
+  GstMusicXml2MidiParser *filter;
   GstPad *otherpad;
 
-  filter = GST_MUSICXML2MIDI (gst_pad_get_parent (pad));
+  filter = GST_MUSICXML2MIDIPARSER (gst_pad_get_parent (pad));
   otherpad = (pad == filter->srcpad) ? filter->sinkpad : filter->srcpad;
   gst_object_unref (filter);
 
@@ -231,7 +231,7 @@ gst_musicxml2midi_set_caps (GstPad * pad, GstCaps * caps)
 
 /* Convert music xml to MIDI and push it to the src pad */
 static GstBuffer *
-process_element(GstMusicXml2Midi * filter, xmlNode * node)
+process_element(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   xmlNode *cur_node = NULL;
   GstBuffer *buf = NULL;
@@ -260,7 +260,7 @@ process_element(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static GstBuffer *
-process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
+process_partlist(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   int num_tracks = 0;
@@ -288,7 +288,7 @@ process_partlist(GstMusicXml2Midi * filter, xmlNode * node)
 }
 
 static GstBuffer *
-process_part(GstMusicXml2Midi * filter, xmlNode * node)
+process_part(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   xmlNode *measure_node;
@@ -355,7 +355,7 @@ process_part(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static Track *
-get_track_by_part(GstMusicXml2Midi * filter, xmlChar * part_id) {
+get_track_by_part(GstMusicXml2MidiParser * filter, xmlChar * part_id) {
   Track *t = filter->first_track;
   while(t != NULL && !xmlStrEqual(t->xml_id, part_id)) {
     t = t->next;
@@ -365,7 +365,7 @@ get_track_by_part(GstMusicXml2Midi * filter, xmlChar * part_id) {
 
 
 static void
-process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
+process_score_part(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   Track *t = malloc(sizeof(Track));
   Track *n = filter->first_track;
@@ -409,7 +409,7 @@ process_score_part(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static GstBuffer *
-process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track * t)
+process_attributes(GstMusicXml2MidiParser * filter, xmlNode * node, Track * t)
 {
   xmlNode *child_node = node->children;
   GstBuffer *buf = NULL;
@@ -440,7 +440,7 @@ process_attributes(GstMusicXml2Midi * filter, xmlNode * node, Track * t)
 
 
 static GstBuffer *
-process_time(GstMusicXml2Midi * filter, xmlNode * node)
+process_time(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   GstBuffer *buf = gst_buffer_new_and_alloc(8);
@@ -474,7 +474,7 @@ process_time(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static GstBuffer *
-process_key(GstMusicXml2Midi * filter, xmlNode * node)
+process_key(GstMusicXml2MidiParser * filter, xmlNode * node)
 {
   xmlNode *child_node = node->children;
   GstBuffer *buf = gst_buffer_new_and_alloc(6);
@@ -500,7 +500,7 @@ process_key(GstMusicXml2Midi * filter, xmlNode * node)
 
 
 static GstBuffer *
-process_note(GstMusicXml2Midi * filter, xmlNode * node, Track * track)
+process_note(GstMusicXml2MidiParser * filter, xmlNode * node, Track * track)
 {
   xmlNode *child_node = node->children;
   xmlNode *pitch_child;
@@ -598,7 +598,7 @@ static gboolean
 gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event)
 {
   if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
-    GstMusicXml2Midi *filter = GST_MUSICXML2MIDI (gst_pad_get_parent (pad));
+    GstMusicXml2MidiParser *filter = GST_MUSICXML2MIDIPARSER (gst_pad_get_parent (pad));
     xmlNode *root = xmlDocGetRootElement(filter->ctxt->myDoc);
     GstBuffer *buf = process_element(filter, root);
     gst_pad_push (filter->srcpad, buf);
@@ -613,10 +613,10 @@ gst_musicxml2midi_sink_event (GstPad * pad, GstEvent * event)
 static GstFlowReturn
 gst_musicxml2midi_chain (GstPad * pad, GstBuffer * buf)
 {
-  GstMusicXml2Midi *filter;
+  GstMusicXml2MidiParser *filter;
   xmlNode *root_element = NULL;
 
-  filter = GST_MUSICXML2MIDI (gst_pad_get_parent (pad));
+  filter = GST_MUSICXML2MIDIPARSER (gst_pad_get_parent (pad));
 
   xmlParseChunk(filter->ctxt, (char *) buf->data, buf->size, 0);
   root_element = xmlDocGetRootElement(filter->ctxt->myDoc);
@@ -641,7 +641,7 @@ musicxml2midi_init (GstPlugin * musicxml2midi)
       0, " musicxml2midi");
 
   return gst_element_register (musicxml2midi, "musicxml2midi", GST_RANK_MARGINAL,
-      GST_TYPE_MUSICXML2MIDI);
+      GST_TYPE_MUSICXML2MIDIPARSER);
 }
 
 /* gstreamer looks for this structure to register musicxml2midis

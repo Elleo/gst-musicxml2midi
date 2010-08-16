@@ -53,22 +53,22 @@
 G_BEGIN_DECLS
 
 /* #defines don't like whitespacey bits */
-#define GST_TYPE_MUSICXML2MIDI \
+#define GST_TYPE_MUSICXML2MIDIPARSER \
   (gst_musicxml2midi_get_type())
-#define GST_MUSICXML2MIDI(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_MUSICXML2MIDI,GstMusicXml2Midi))
+#define GST_MUSICXML2MIDIPARSER(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_MUSICXML2MIDIPARSER,GstMusicXml2MidiParser))
 #define GST_MUSICXML2MIDI_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_MUSICXML2MIDI,GstMusicXml2MidiClass))
-#define GST_IS_MUSICXML2MIDI(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_MUSICXML2MIDI))
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_MUSICXML2MIDIPARSER,GstMusicXml2MidiParserClass))
+#define GST_IS_MUSICXML2MIDIPARSER(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_MUSICXML2MIDIPARSER))
 #define GST_IS_MUSICXML2MIDI_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_MUSICXML2MIDI))
+  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_MUSICXML2MIDIPARSER))
 
-typedef struct _GstMusicXml2Midi      GstMusicXml2Midi;
-typedef struct _GstMusicXml2MidiClass GstMusicXml2MidiClass;
+typedef struct _GstMusicXml2MidiParser      GstMusicXml2MidiParser;
+typedef struct _GstMusicXml2MidiParserClass GstMusicXml2MidiParserClass;
 typedef struct _Track                 Track;
 
-struct _GstMusicXml2Midi
+struct _GstMusicXml2MidiParser
 {
   GstElement element;
 
@@ -80,7 +80,7 @@ struct _GstMusicXml2Midi
   xmlParserCtxtPtr ctxt;
 };
 
-struct _GstMusicXml2MidiClass 
+struct _GstMusicXml2MidiParserClass
 {
   GstElementClass parent_class;
 };
