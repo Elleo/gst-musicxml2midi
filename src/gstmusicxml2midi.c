@@ -133,7 +133,7 @@ gst_musicxml2midi_base_init (gpointer gclass)
 
   gst_element_class_set_details_simple(element_class,
     "MusicXml2Midi",
-    "audio",
+    "Parser",
     "Converts musicxml to midi format allowing playback via a standard midi synthesizer",
     "Michael Sheldon <mike@mikeasoft.com>");
 
