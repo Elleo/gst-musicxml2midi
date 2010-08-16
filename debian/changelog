@@ -1,3 +1,10 @@
+gst-musicxml2midi (0.2-0) lucid; urgency=low
+
+  * Give correct caps (application/xml)
+  * Add support for auto-plugging
+
+ -- Mike Sheldon <mike@mikeasoft.com>  Mon, 16 Aug 2010 15:25:02 +0100
+
 gst-musicxml2midi (0.1-0) lucid; urgency=low
 
   * Initial release
