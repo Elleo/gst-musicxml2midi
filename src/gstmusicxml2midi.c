@@ -640,7 +640,7 @@ musicxml2midi_init (GstPlugin * musicxml2midi)
   GST_DEBUG_CATEGORY_INIT (gst_musicxml2midi_debug, "musicxml2midi",
       0, " musicxml2midi");
 
-  return gst_element_register (musicxml2midi, "musicxml2midi", GST_RANK_NONE,
+  return gst_element_register (musicxml2midi, "musicxml2midi", GST_RANK_MARGINAL,
       GST_TYPE_MUSICXML2MIDI);
 }
 
